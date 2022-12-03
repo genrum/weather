@@ -1,6 +1,6 @@
 export const storage = {
     saveFavoriteCities: function(favoriteCities) {
-        localStorage.setItem('favoriteCitites', JSON.stringify(favoriteCities));
+        localStorage.setItem("favoriteCitites", JSON.stringify(favoriteCities));
         console.log("test1 saving favorites");
     },
     getFavoriteCities: function() {
