@@ -1,5 +1,6 @@
 import { storage } from "./storage.js";
-import { toCelcius } from "/helpers.js";
+import { toCelcius, getTimeInLocalTime, getMonthAndDate, createEl, EL  } from "/helpers.js";
+
 // tabs
 const weatherButtons = document.querySelector('.weather__buttons');
 const weatherButtonAll = Array.from( document.querySelectorAll('.weather__button'));
@@ -29,58 +30,64 @@ function changeTabs(clickButton) {
 	newActiveTab.classList.add("-active")
 }
 
-// server request from input
+const serverUrlWeather = 'http://api.openweathermap.org/data/2.5/weather';
+const serverUrlForecast = 'http://api.openweathermap.org/data/2.5/weather';
 
 let form = document.querySelector(".weather__form");
 let cityOut = document.querySelector(".now__city");
+let addedLocationsOut = document.querySelector(".weather__cities");
+let favoriteBtn = document.querySelector(".favorite");
+let input = form.querySelector(".weather__input");
+input.placeholder = storage.getCurrentCity() ? storage.getCurrentCity() : "Aktobe";
+favoriteBtn.addEventListener("click", addToFavorites);
 
-const serverUrl = 'http://api.openweathermap.org/data/2.5/weather';
-const apiKey = 'f660a2fb1e4bad108d6160b7f58c555f'; 
-
-let favorites = storage.getFavoriteCities() || [];     //? storage.getFavoriteCities() : [];
+let favorites = storage.getFavoriteCities(); // || [];     //? storage.getFavoriteCities() : [];
 renderAddedLocations();
 
+if (storage.getCurrentCity()) {
+	fetchData( storage.getCurrentCity(), serverUrlWeather );
+}
 
-form.onsubmit = (event) => {
+form.addEventListener("submit", (event) => {
 	event.preventDefault();
 	const input = form.querySelector(".weather__input");
-	const cityName = input.value;
-	const url = `${serverUrl}?q=${cityName}&appid=${apiKey}`;
+	storage.saveCurrentCity(input.value);
+	if (!input.value) {
+		fetchData(input.placeholder, serverUrlWeather);
+	}
+	fetchData(input.value, serverUrlWeather);
+});
 
-	fetch(url)
-		.then(response => response.json())
-		.then(result => renderTabNow(result))
-		.catch(function(error) {
-			if (error instanceof TypeError) {
-				alert("Error in server response or there's no such location")
-			} else if (error instanceof ReferenceError) {
-				alert(`Error in executing code ${error.message}`);
-			} else {
-				throw error;
-			}
-		})
-		.catch(error => {
-			alert(`Unknown error: ${error}`);
-		});
-		
-}
+console.log( storage.getWeatherObj() ); // temp, to see all properties of response obj
 
-function renderTabNow(data) {
-	let tempOut = document.querySelector(".now__temperature>span");
-	tempOut.textContent = toCelcius(data.main.temp);
-	// try taking declaring those element out from function to the global scope.
-	let imgOut = document.querySelector(".now__img");
+let tempOut = document.querySelector(".now__temperature>span");
+let imgOut = document.querySelector(".now__img");
+
+let detailsCityOut = document.querySelector('.details__city');
+let detailsTempOut = document.querySelector('.details__temperature');
+let detailsFeelsLikeOut = document.querySelector('.details__feels-like');
+let detailsWeatherOut = document.querySelector('.details__weather');
+let detailsSunriseOut = document.querySelector('.details__sunrise');
+let detailsSunsetOut = document.querySelector('.details__sunset');
+
+function renderTabsNowAndDetails(data) {
+	tempOut.textContent = toCelcius(data.main.temp)+"˚";
+	//tempOut.parentElement.textContent = "˚";
 	imgOut.src = `img/${data.weather[0].icon}.png`;
-
 	cityOut.textContent = data.name // ${data.sys.country};
+	
+	detailsCityOut.textContent = data.name
+
+	detailsTempOut.textContent = toCelcius(data.main.temp)+"˚";
+	detailsFeelsLikeOut.textContent = toCelcius(data.main.feels_like)+"˚";
+	detailsWeatherOut.textContent = data.weather[0].main;
+
+	detailsSunriseOut.textContent = getTimeInLocalTime(data.sys.sunrise, data.timezone);
+	detailsSunsetOut.textContent = getTimeInLocalTime(data.sys.sunset, data.timezone);
+
+	console.log(data);
+	storage.saveWeatheObj(data);
 }
-
-/* function toCelcius(inKelvins) {
-	return Math.round(inKelvins - 273.15)//.toFixed()
-} */
-
-let favoriteBtn = document.querySelector(".favorite");
-favoriteBtn.addEventListener("click", addToFavorites);
 
 function addToFavorites() {
 	if (favorites.includes(cityOut.textContent)) {
@@ -92,7 +99,6 @@ function addToFavorites() {
 	renderAddedLocations();
 	}
 }
-let addedLocationsOut = document.querySelector(".weather__cities");
 
 function renderAddedLocations() {
 	let addedLocations = document.querySelectorAll(".weather__city");
@@ -121,12 +127,89 @@ function removeFavorite() {
 	renderAddedLocations()
 }
 
-function addedBackToNow () {
-	const cityName = this.textContent;
+function addedBackToNow() {
+	fetchData(this.textContent, serverUrlWeather)
+}
+
+function fetchData(cityName, serverUrl = "http://api.openweathermap.org/data/2.5/weather") {
+	// const serverUrl = 'http://api.openweathermap.org/data/2.5/weather';
+	const apiKey = '85b54952e3caff80986f12887070bdda';
 	const url = `${serverUrl}?q=${cityName}&appid=${apiKey}`;
 
 	fetch(url)
-		.then(response => response.json())
-		.then(result => renderTabNow(result))
-		.catch(error => alert(error))
+		.then(response =>response.json())
+		.then(data => renderTabsNowAndDetails(data))
+		.catch(function(error) {
+			if (error instanceof TypeError) {
+				alert("Error in server response or there's no such location")
+			} else if (error instanceof ReferenceError) {
+				alert(`Error in executing code ${error.message}`);
+			} else {
+				throw error;
+			}
+		})
+		.catch(error => {
+			alert(`Unknown error: ${error}`);
+		});
+		storage.saveCurrentCity(cityName);
+}
+
+fetch("http://api.openweathermap.org/data/2.5/forecast?q=tukwila&appid=85b54952e3caff80986f12887070bdda")
+	.then(response => response.json())
+	.then(data => renderForecast(data))
+
+let dataForecast;
+let divCards = document.querySelector(".forecast__cards");
+
+let forecastCityOut = document.querySelector(".forecast__city");
+/* let forecastDateOut = document.querySelector(".forecast__date");
+let forecastTimeOut = document.querySelector(".forecast__time");
+let forecastTempOut = document.querySelector(".forecast__temperature");
+let forecastCondOut = document.querySelector(".forecast__conditions");
+let forecastFeelsOut = document.querySelector(".forecast__feels-like");
+let forecastImgOut = document.querySelector(".forecast__pic>img"); */
+
+
+function renderForecast(data) {
+	dataForecast = data;
+	const arrForecast = data.list;
+	// arrForecast.length = 6;
+	
+	console.log(data);
+	console.log(arrForecast);
+	
+	forecastCityOut.textContent = data.city.name;
+
+	let cards = document.querySelectorAll(".forecast__card");
+	cards.forEach(function(item) {
+		item.remove()
+	})
+
+	arrForecast.forEach(function(item) {
+		let divCard = createEl(EL.DIV, EL.CARD);
+
+		let divDate = createEl(EL.DIV, EL.DATE);
+		divDate.textContent = getMonthAndDate(item.dt);
+
+		let divTime = createEl(EL.DIV, EL.TIME);
+		divTime.textContent = getTimeInLocalTime(item.dt, data.city.timezone);
+
+		let divTemp = createEl(EL.DIV, EL.TEMP);
+		divTemp.textContent = `Temperature: ${toCelcius(item.main.temp)}˚`;
+
+		let divCond = createEl(EL.DIV, EL.COND);
+		divCond.textContent = item.weather[0].description;
+
+		let divFeels = createEl(EL.DIV, EL.FEELS);
+		divFeels.textContent = `Feels like: ${toCelcius(item.main.feels_like)}˚`;
+
+		let divImg = createEl(EL.DIV, EL.IMG);
+		let img = document.createElement("img");
+		img.src = `img/${item.weather[0].icon}.png`;
+		img.alt = item.weather[0].description;
+		divImg.append(img);
+
+		divCard.append(divDate, divTime, divTemp, divCond, divFeels, divImg);
+		divCards.append(divCard)
+	})
 }
