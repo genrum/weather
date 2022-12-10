@@ -31,7 +31,7 @@ function changeTabs(clickButton) {
 }
 
 const serverUrlWeather = 'http://api.openweathermap.org/data/2.5/weather';
-const serverUrlForecast = 'http://api.openweathermap.org/data/2.5/weather';
+// const serverUrlForecast = 'http://api.openweathermap.org/data/2.5/weather';
 
 let form = document.querySelector(".weather__form");
 let cityOut = document.querySelector(".now__city");
@@ -69,6 +69,7 @@ let detailsFeelsLikeOut = document.querySelector('.details__feels-like');
 let detailsWeatherOut = document.querySelector('.details__weather');
 let detailsSunriseOut = document.querySelector('.details__sunrise');
 let detailsSunsetOut = document.querySelector('.details__sunset');
+let detailsTime = document.querySelector('.details__time');
 
 function renderTabsNowAndDetails(data) {
 	tempOut.textContent = toCelcius(data.main.temp)+"˚";
@@ -84,6 +85,8 @@ function renderTabsNowAndDetails(data) {
 
 	detailsSunriseOut.textContent = getTimeInLocalTime(data.sys.sunrise, data.timezone);
 	detailsSunsetOut.textContent = getTimeInLocalTime(data.sys.sunset, data.timezone);
+	detailsTime.textContent = getTimeInLocalTime(data.dt, data.timezone);
+
 
 	console.log(data);
 	storage.saveWeatheObj(data);
@@ -131,8 +134,14 @@ function addedBackToNow() {
 	fetchData(this.textContent, serverUrlWeather)
 }
 
-function fetchData(cityName, serverUrl = "http://api.openweathermap.org/data/2.5/weather") {
-	// const serverUrl = 'http://api.openweathermap.org/data/2.5/weather';
+function doFetch(weatherOrFore, cityNam) {
+	const serverUrl = `http://api.openweathermap.org/data/2.5/${weatherOrFore}`;
+	const apiKey = '85b54952e3caff80986f12887070bdda';
+	const url = `${serverUrl}?q=${cityNam}&appid=${apiKey}`;
+	return fetch(url);
+}
+
+function fetchData(cityName, serverUrl) {
 	const apiKey = '85b54952e3caff80986f12887070bdda';
 	const url = `${serverUrl}?q=${cityName}&appid=${apiKey}`;
 
@@ -150,7 +159,10 @@ function fetchData(cityName, serverUrl = "http://api.openweathermap.org/data/2.5
 		})
 		.catch(error => {
 			alert(`Unknown error: ${error}`);
-		});
+		})
+		.then(() => doFetch("forecast", cityName))
+		.then(response => response.json())
+		.then(data => renderForecast(data));
 		storage.saveCurrentCity(cityName);
 }
 
@@ -158,7 +170,7 @@ fetch("http://api.openweathermap.org/data/2.5/forecast?q=tukwila&appid=85b54952e
 	.then(response => response.json())
 	.then(data => renderForecast(data))
 
-let dataForecast;
+// let dataForecast;
 let divCards = document.querySelector(".forecast__cards");
 
 let forecastCityOut = document.querySelector(".forecast__city");
@@ -171,12 +183,12 @@ let forecastImgOut = document.querySelector(".forecast__pic>img"); */
 
 
 function renderForecast(data) {
-	dataForecast = data;
+	//dataForecast = data;
 	const arrForecast = data.list;
 	// arrForecast.length = 6;
 	
-	console.log(data);
-	console.log(arrForecast);
+	// console.log(data);
+	// console.log(arrForecast);
 	
 	forecastCityOut.textContent = data.city.name;
 
