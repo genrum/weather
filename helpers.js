@@ -7,30 +7,15 @@ export function getTimeInLocalTime(timeStamp, timeZone) {
     date.setHours(date.getHours() + timeZone/3600) // приводим отображение от 
     //вашей текущей часовой зоны к ЮТС, иначе бы показало время в вашем местном времени.
     let minutes = (date.getMinutes() >= 0 && date.getMinutes() <= 9) ? "0" + date.getMinutes() : date.getMinutes();
-    let dateString = date.getUTCHours() + ":" + minutes; // не до конца понимаю что оно с чем приводит, 
+    return date.getUTCHours() + ":" + minutes; // не до конца понимаю что оно с чем приводит, 
     //но в итоге показывает местное время
-    return dateString;
 }
 
 export function getMonthAndDate(timeStamp) {
-    const MONTH = {
-        0: "Jan",
-        1: "Feb",
-        2: "March",
-        3: "Apr",
-        4: "May",
-        5: "June",
-        6: "July",
-        7: "August",
-        8: "Sep",
-        9: "Oct",
-        10: "Nov",
-        11: "Dec",
-    };
+    const MONTH = ["Jan","Feb","March","Apr","May","June","July","August","Sep","Oct","Nov","Dec",];
 
     let date = new Date(1000 * timeStamp);
-    let monthAndDate = MONTH[date.getMonth()] + " " + date.getDate();
-    return monthAndDate;
+    return MONTH[date.getMonth()] + " " + date.getDate();
 }
 
 export const EL = {

@@ -1,106 +1,71 @@
 import { storage } from "./storage.js";
 import { toCelcius, getTimeInLocalTime, getMonthAndDate, createEl, EL  } from "/helpers.js";
 
-// tabs
-const weatherButtons = document.querySelector('.weather__buttons');
-const weatherButtonAll = Array.from( document.querySelectorAll('.weather__button'));
-const weatherTabs = document.querySelector('.weather__tabs')
-const weatherTabAll = document.querySelectorAll('.weather__tab')
-weatherButtons.addEventListener("click", function (event) {
-	const clickButton = event.target
-	if (checkClickTabs(clickButton)){
-		changeTabs(clickButton)
-	}
-});
-
-function checkClickTabs(clickButton) {
-	const clickButtonParent = clickButton.closest(".weather__button")
-	const activeClickElementParent = clickButtonParent.classList.contains("-active")
-	return clickButtonParent && !activeClickElementParent
-}
-
-function changeTabs(clickButton) {
-	const activeButton = weatherButtons.querySelector('.weather__button.-active');
-	activeButton.classList.remove("-active")
-	clickButton.classList.add("-active")
-	const indexClickButton = weatherButtonAll.findIndex(item => item === clickButton)
-	const activeTab = weatherTabs.querySelector('.weather__tab.-active');
-	activeTab.classList.remove("-active")
-	const newActiveTab = weatherTabAll[indexClickButton]
-	newActiveTab.classList.add("-active")
-}
-
 const serverUrlWeather = 'http://api.openweathermap.org/data/2.5/weather';
 // const serverUrlForecast = 'http://api.openweathermap.org/data/2.5/weather';
 
-let form = document.querySelector(".weather__form");
-let cityOut = document.querySelector(".now__city");
-let addedLocationsOut = document.querySelector(".weather__cities");
-let favoriteBtn = document.querySelector(".favorite");
-let input = form.querySelector(".weather__input");
-input.placeholder = storage.getCurrentCity() ? storage.getCurrentCity() : "Aktobe";
-favoriteBtn.addEventListener("click", addToFavorites);
+const ELEMENTS_UI = {
+	form: document.querySelector(".weather__form"),
+	cityOut: document.querySelector(".now__city"),
+	addedLocationsOut: document.querySelector(".weather__cities"),
+	favoriteBtn: document.querySelector(".favorite"),
+	input: document.querySelector(".weather__input"),
 
-let favorites = storage.getFavoriteCities(); // || [];     //? storage.getFavoriteCities() : [];
+	tempOut: document.querySelector(".now__temperature>span"),
+	imgOut: document.querySelector(".now__img"),
+	
+	detailsCityOut: document.querySelector('.details__city'),
+	detailsTempOut: document.querySelector('.details__temperature'),
+	detailsFeelsLikeOut: document.querySelector('.details__feels-like'),
+	detailsWeatherOut: document.querySelector('.details__weather'),
+	detailsSunriseOut: document.querySelector('.details__sunrise'),
+	detailsSunsetOut: document.querySelector('.details__sunset'),
+	detailsTime: document.querySelector('.details__time'),
+}
+
+ELEMENTS_UI.input.placeholder = storage.getCurrentCity() ? storage.getCurrentCity() : "Aktobe";
+
+ELEMENTS_UI.favoriteBtn.addEventListener("click", addToFavorites);
+
+let favorites = new Set(storage.getFavoriteCities()); //storage.getFavoriteCities() ||  || [];     //? storage.getFavoriteCities() : [];
 renderAddedLocations();
 
 if (storage.getCurrentCity()) {
 	fetchData( storage.getCurrentCity(), serverUrlWeather );
 }
 
-form.addEventListener("submit", (event) => {
+ELEMENTS_UI.form.addEventListener("submit", (event) => {
 	event.preventDefault();
-	const input = form.querySelector(".weather__input");
-	storage.saveCurrentCity(input.value);
-	if (!input.value) {
-		fetchData(input.placeholder, serverUrlWeather);
+	// const input = form.querySelector(".weather__input");
+	storage.saveCurrentCity(ELEMENTS_UI.input.value);
+	if (!ELEMENTS_UI.input.value) {
+		fetchData(ELEMENTS_UI.input.placeholder, serverUrlWeather);
 	}
-	fetchData(input.value, serverUrlWeather);
+	fetchData(ELEMENTS_UI.input.value, serverUrlWeather);
 });
-
-console.log( storage.getWeatherObj() ); // temp, to see all properties of response obj
-
-let tempOut = document.querySelector(".now__temperature>span");
-let imgOut = document.querySelector(".now__img");
-
-let detailsCityOut = document.querySelector('.details__city');
-let detailsTempOut = document.querySelector('.details__temperature');
-let detailsFeelsLikeOut = document.querySelector('.details__feels-like');
-let detailsWeatherOut = document.querySelector('.details__weather');
-let detailsSunriseOut = document.querySelector('.details__sunrise');
-let detailsSunsetOut = document.querySelector('.details__sunset');
-let detailsTime = document.querySelector('.details__time');
-
-function renderTabsNowAndDetails(data) {
-	tempOut.textContent = toCelcius(data.main.temp)+"˚";
-	//tempOut.parentElement.textContent = "˚";
-	imgOut.src = `img/${data.weather[0].icon}.png`;
-	cityOut.textContent = data.name // ${data.sys.country};
-	
-	detailsCityOut.textContent = data.name
-
-	detailsTempOut.textContent = toCelcius(data.main.temp)+"˚";
-	detailsFeelsLikeOut.textContent = toCelcius(data.main.feels_like)+"˚";
-	detailsWeatherOut.textContent = data.weather[0].main;
-
-	detailsSunriseOut.textContent = getTimeInLocalTime(data.sys.sunrise, data.timezone);
-	detailsSunsetOut.textContent = getTimeInLocalTime(data.sys.sunset, data.timezone);
-	detailsTime.textContent = getTimeInLocalTime(data.dt, data.timezone);
+// put all variables in namespace.
 
 
-	console.log(data);
-	storage.saveWeatheObj(data);
+function renderTabsNowAndDetails({main, name, weather, sys, timezone, dt}) {
+	ELEMENTS_UI.tempOut.textContent = toCelcius(main.temp)+"˚";
+	ELEMENTS_UI.imgOut.src = `img/${weather[0].icon}.png`;
+	ELEMENTS_UI.cityOut.textContent = name 
+	ELEMENTS_UI.detailsCityOut.textContent = name
+
+	ELEMENTS_UI.detailsTempOut.textContent = toCelcius(main.temp)+"˚";
+	ELEMENTS_UI.detailsFeelsLikeOut.textContent = toCelcius(main.feels_like)+"˚";
+	ELEMENTS_UI.detailsWeatherOut.textContent = weather[0].main;
+
+	ELEMENTS_UI.detailsSunriseOut.textContent = getTimeInLocalTime(sys.sunrise, timezone);
+	ELEMENTS_UI.detailsSunsetOut.textContent = getTimeInLocalTime(sys.sunset, timezone);
+	ELEMENTS_UI.detailsTime.textContent = getTimeInLocalTime(dt, timezone);
 }
 
 function addToFavorites() {
-	if (favorites.includes(cityOut.textContent)) {
-		alert("This location has been added already")
-	} else {
-	
-	favorites.push(cityOut.textContent);
+	favorites.add(ELEMENTS_UI.cityOut.textContent);
 	storage.saveFavoriteCities(favorites);
 	renderAddedLocations();
-	}
+	//}
 }
 
 function renderAddedLocations() {
@@ -118,14 +83,13 @@ function renderAddedLocations() {
 		span.className = "weather__delete-city";
 		span.addEventListener("click", removeFavorite)
 		listItem.append(span);
-		addedLocationsOut.append(listItem);
-	})
-	console.log(favorites)
+		ELEMENTS_UI.addedLocationsOut.append(listItem);
+	});
 }
 
 function removeFavorite() {
 	let cityName = this.closest(".weather__city").textContent;
-	favorites = favorites.filter(item => item !== cityName);
+	favorites.delete(cityName) //= favorites.filter(item => item !== cityName);
 	storage.saveFavoriteCities(favorites);
 	renderAddedLocations()
 }
@@ -170,26 +134,12 @@ fetch("http://api.openweathermap.org/data/2.5/forecast?q=tukwila&appid=85b54952e
 	.then(response => response.json())
 	.then(data => renderForecast(data))
 
-// let dataForecast;
 let divCards = document.querySelector(".forecast__cards");
 
 let forecastCityOut = document.querySelector(".forecast__city");
-/* let forecastDateOut = document.querySelector(".forecast__date");
-let forecastTimeOut = document.querySelector(".forecast__time");
-let forecastTempOut = document.querySelector(".forecast__temperature");
-let forecastCondOut = document.querySelector(".forecast__conditions");
-let forecastFeelsOut = document.querySelector(".forecast__feels-like");
-let forecastImgOut = document.querySelector(".forecast__pic>img"); */
-
 
 function renderForecast(data) {
-	//dataForecast = data;
 	const arrForecast = data.list;
-	// arrForecast.length = 6;
-	
-	// console.log(data);
-	// console.log(arrForecast);
-	
 	forecastCityOut.textContent = data.city.name;
 
 	let cards = document.querySelectorAll(".forecast__card");
