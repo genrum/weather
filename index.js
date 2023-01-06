@@ -1,5 +1,6 @@
-import { storage } from "/storage.js";
-import { toCelcius, getTimeInLocalTime, getMonthAndDate, createEl, EL  } from "/helpers.js";
+import { storage } from "./storage.js";
+import { toCelcius, getTimeInLocalTime, getMonthAndDate, createEl, EL  } from "./helpers.js";
+import { secondsToMilliseconds, format } from "date-fns";
 
 const serverUrlWeather = 'http://api.openweathermap.org/data/2.5/weather';
 // const serverUrlForecast = 'http://api.openweathermap.org/data/2.5/weather';
@@ -22,29 +23,24 @@ const ELEMENTS_UI = {
 	detailsSunsetOut: document.querySelector('.details__sunset'),
 	detailsTime: document.querySelector('.details__time'),
 }
+let divCards = document.querySelector(".forecast__cards");
+let forecastCityOut = document.querySelector(".forecast__city");
 
-ELEMENTS_UI.input.placeholder = storage.getCurrentCity() ? storage.getCurrentCity() : "Aktobe";
 
 ELEMENTS_UI.favoriteBtn.addEventListener("click", addToFavorites);
 
-let favorites = new Set(storage.getFavoriteCities()); //storage.getFavoriteCities() ||  || [];     //? storage.getFavoriteCities() : [];
+let favorites = new Set(storage.getFavoriteCities()); //storage.getFavoriteCities() ||  || []; //? storage.getFavoriteCities() : [];
 renderAddedLocations();
 
-if (storage.getCurrentCity()) {
-	fetchData( storage.getCurrentCity(), serverUrlWeather );
+if (storage.getCookieCity()) {
+	fetchData( storage.getCookieCity(), serverUrlWeather );
 }
 
 ELEMENTS_UI.form.addEventListener("submit", (event) => {
 	event.preventDefault();
-	// const input = form.querySelector(".weather__input");
-	storage.saveCurrentCity(ELEMENTS_UI.input.value);
-	if (!ELEMENTS_UI.input.value) {
-		fetchData(ELEMENTS_UI.input.placeholder, serverUrlWeather);
-	}
 	fetchData(ELEMENTS_UI.input.value, serverUrlWeather);
 });
 // put all variables in namespace.
-
 
 function renderTabsNowAndDetails({main, name, weather, sys, timezone, dt}) {
 	ELEMENTS_UI.tempOut.textContent = toCelcius(main.temp)+"˚";
@@ -65,7 +61,6 @@ function addToFavorites() {
 	favorites.add(ELEMENTS_UI.cityOut.textContent);
 	storage.saveFavoriteCities(favorites);
 	renderAddedLocations();
-	//}
 }
 
 function renderAddedLocations() {
@@ -110,7 +105,7 @@ function fetchData(cityName, serverUrl) {
 	const url = `${serverUrl}?q=${cityName}&appid=${apiKey}`;
 
 	fetch(url)
-		.then(response =>response.json())
+		.then(response => response.json())
 		.then(data => renderTabsNowAndDetails(data))
 		.catch(function(error) {
 			if (error instanceof TypeError) {
@@ -128,16 +123,9 @@ function fetchData(cityName, serverUrl) {
 		.then(response => response.json())
 		.then(data => renderForecast(data))
 		.catch(alert);
-		storage.saveCurrentCity(cityName);
+		storage.setCookieCity("city", cityName, {"max-age": 3600, secure: true});
+		//storage.saveCurrentCity(cityName);
 }
-
-/* fetch("http://api.openweathermap.org/data/2.5/forecast?q=tukwila&appid=85b54952e3caff80986f12887070bdda")
-	.then(response => response.json())
-	.then(data => renderForecast(data)) */
-
-let divCards = document.querySelector(".forecast__cards");
-
-let forecastCityOut = document.querySelector(".forecast__city");
 
 function renderForecast(data) {
 	const arrForecast = data.list;
@@ -152,10 +140,10 @@ function renderForecast(data) {
 		let divCard = createEl(EL.DIV, EL.CARD);
 
 		let divDate = createEl(EL.DIV, EL.DATE);
-		divDate.textContent = getMonthAndDate(item.dt);
+		divDate.textContent = format(secondsToMilliseconds(item.dt), "iii MMM dd");//getMonthAndDate(item.dt);
 
 		let divTime = createEl(EL.DIV, EL.TIME);
-		divTime.textContent = getTimeInLocalTime(item.dt, data.city.timezone);
+		divTime.textContent = getTimeInLocalTime(item.dt, data.city.timezone); //format(item.dt * 1000, "H mm");//
 
 		let divTemp = createEl(EL.DIV, EL.TEMP);
 		divTemp.textContent = `Temperature: ${toCelcius(item.main.temp)}˚`;
